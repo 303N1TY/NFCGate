@@ -67,6 +67,39 @@
             />
     </PreferenceCategory>
     <PreferenceCategory
+        android:title="@string/settings_authentication"
+        android:key="authentication"
+        >
+        <CheckBoxPreference
+            android:title="@string/settings_enable_authentication"
+            android:key="pref_enable_authentication"
+            android:summary="@string/settings_enable_authentication_summary"
+            android:defaultValue="false"
+            />
+        <EditTextPreference
+            android:title="@string/settings_auth_secret"
+            android:key="pref_auth_secret"
+            android:summary="@string/settings_auth_secret_summary"
+            android:dialogMessage="@string/settings_auth_secret_dialog"
+            android:dependency="pref_enable_authentication"
+            android:inputType="textPassword"
+            />
+        <EditTextPreference
+            android:title="@string/settings_auth_client_id"
+            android:key="pref_auth_client_id"
+            android:summary="@string/settings_auth_client_id_summary"
+            android:dialogMessage="@string/settings_auth_client_id_dialog"
+            android:dependency="pref_enable_authentication"
+            android:defaultValue=""
+            />
+        <Preference
+            android:key="pref_auth_info"
+            android:summary="@string/settings_auth_info"
+            android:selectable="false"
+            android:dependency="pref_enable_authentication"
+            />
+    </PreferenceCategory>
+    <PreferenceCategory
         android:title="@string/settings_replay"
         android:key="replay"
         >

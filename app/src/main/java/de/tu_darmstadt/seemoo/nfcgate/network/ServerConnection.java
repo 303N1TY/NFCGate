@@ -19,7 +19,7 @@ public class ServerConnection {
     private static final String TAG = "ServerConnection";
 
     public interface Callback {
-        void onReceive(byte[] data);
+        void onReceive(int messageType, byte[] data);
         void onNetworkStatus(NetworkStatus status);
     }
 
@@ -94,6 +94,13 @@ public class ServerConnection {
     }
 
     /**
+     * Schedules an authentication message to be sent (message type 255)
+     */
+    public void sendAuthMessage(byte[] data) {
+        mSendQueue.add(new SendRecord(255, data));
+    }
+
+    /**
      * Called by threads to open socket
      */
     public Socket openSocket() throws IOException {
@@ -129,10 +136,10 @@ public class ServerConnection {
     }
 
     /**
-     * ReceiveThread delivers data
+     * ReceiveThread delivers data with message type
      */
-    public void onReceive(byte[] data) {
-        mCallback.onReceive(data);
+    public void onReceive(int messageType, byte[] data) {
+        mCallback.onReceive(messageType, data);
     }
 
     /**

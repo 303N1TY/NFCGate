@@ -32,7 +32,7 @@ public class ServerConnectionTest {
         }
 
         @Override
-        public void onReceive(byte[] data) {
+        public void onReceive(int messageType, byte[] data) {
 
         }
 

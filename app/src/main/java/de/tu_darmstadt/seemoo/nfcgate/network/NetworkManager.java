@@ -8,8 +8,10 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import de.tu_darmstadt.seemoo.nfcgate.gui.MainActivity;
+import de.tu_darmstadt.seemoo.nfcgate.network.auth.Auth;
 import de.tu_darmstadt.seemoo.nfcgate.network.c2s.C2S;
 import de.tu_darmstadt.seemoo.nfcgate.network.data.NetworkStatus;
+import de.tu_darmstadt.seemoo.nfcgate.network.threading.ReceiveThread;
 import de.tu_darmstadt.seemoo.nfcgate.util.NfcComm;
 
 import static de.tu_darmstadt.seemoo.nfcgate.network.c2s.C2S.ServerData.Opcode;
@@ -20,12 +22,14 @@ public class NetworkManager implements ServerConnection.Callback {
     public interface Callback {
         void onReceive(NfcComm data);
         void onNetworkStatus(NetworkStatus status);
+        void onAuthenticationError(String message);
     }
 
     // references
     private final MainActivity mActivity;
     private ServerConnection mConnection;
     private final Callback mCallback;
+    private AuthenticationManager mAuthManager;
 
     // preference data
     private String mHostname;
@@ -34,11 +38,15 @@ public class NetworkManager implements ServerConnection.Callback {
     public NetworkManager(MainActivity activity, Callback cb) {
         mActivity = activity;
         mCallback = cb;
+        mAuthManager = new AuthenticationManager(activity);
     }
 
     public void connect() {
         // read fresh preference data
         loadPreferenceData();
+
+        // reset authentication state
+        mAuthManager = new AuthenticationManager(mActivity);
 
         // disconnect old connection
         if (mConnection != null)
@@ -51,8 +59,14 @@ public class NetworkManager implements ServerConnection.Callback {
                 .setCallback(this)
                 .connect();
 
-        // queue initial handshake message
-        sendServer(Opcode.OP_SYN, null);
+        // If authentication is enabled, wait for auth challenge before sending handshake
+        // Otherwise, queue initial handshake message immediately
+        if (!mAuthManager.isEnabled()) {
+            sendServer(Opcode.OP_SYN, null);
+        } else {
+            Log.d(TAG, "Authentication enabled, waiting for server challenge");
+            onNetworkStatus(NetworkStatus.AUTH_IN_PROGRESS);
+        }
     }
 
     public void disconnect() {
@@ -60,6 +74,9 @@ public class NetworkManager implements ServerConnection.Callback {
             sendServer(Opcode.OP_FIN, null);
             mConnection.sync();
             mConnection.disconnect();
+        }
+        if (mAuthManager != null) {
+            mAuthManager.reset();
         }
     }
 
@@ -69,7 +86,21 @@ public class NetworkManager implements ServerConnection.Callback {
     }
 
     @Override
-    public void onReceive(byte[] data) {
+    public void onReceive(int messageType, byte[] data) {
+        Log.d(TAG, "onReceive: messageType=" + messageType + ", data.length=" + (data != null ? data.length : 0));
+        // Handle authentication messages (type 255)
+        if (messageType == ReceiveThread.AUTH_MESSAGE_TYPE) {
+            handleAuthMessage(data);
+            return;
+        }
+
+        // For normal messages, check authentication status if required
+        if (mAuthManager.isEnabled() && !mAuthManager.isAuthenticated()) {
+            Log.w(TAG, "Received data before authentication complete, ignoring");
+            return;
+        }
+
+        // Parse and handle normal server data
         final C2S.ServerData serverData;
         try {
             serverData = C2S.ServerData.parseFrom(data);
@@ -103,6 +134,80 @@ public class NetworkManager implements ServerConnection.Callback {
                 mCallback.onReceive(new NfcComm(serverData.getData().toByteArray()));
 
                 break;
+        }
+    }
+
+    /**
+     * Handle authentication protocol messages
+     */
+    private void handleAuthMessage(byte[] data) {
+        // Try parsing as AuthChallenge first
+        try {
+            Auth.AuthChallenge challenge = Auth.AuthChallenge.parseFrom(data);
+            if (!challenge.getNonce().isEmpty()) {
+                handleAuthChallenge(challenge);
+                return;
+            }
+        } catch (InvalidProtocolBufferException e) {
+            Log.e(TAG, "Failed to parse AuthChallenge");
+        }
+
+        // Try parsing as AuthResult
+        try {
+            Auth.AuthResult result = Auth.AuthResult.parseFrom(data);
+            handleAuthResult(result);
+        } catch (InvalidProtocolBufferException e) {
+            Log.e(TAG, "Failed to parse AuthResult");
+            mCallback.onAuthenticationError("Invalid authentication message received");
+        }
+    }
+
+    /**
+     * Handle authentication challenge from server
+     */
+    private void handleAuthChallenge(Auth.AuthChallenge challenge) {
+        if (!mAuthManager.isEnabled()) {
+            Log.w(TAG, "Received auth challenge but authentication not enabled locally");
+            mCallback.onAuthenticationError("Server requires authentication. Please enable authentication in settings.");
+            mConnection.disconnect();
+            return;
+        }
+
+        try {
+            // Create response with HMAC
+            Auth.AuthResponse response = mAuthManager.createResponse(challenge.getNonce());
+            // Send auth response
+            mConnection.sendAuthMessage(response.toByteArray());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create auth response", e);
+            mCallback.onAuthenticationError("Failed to create authentication response: " + e.getMessage());
+            mConnection.disconnect();
+        }
+    }
+
+    /**
+     * Handle authentication result from server
+     */
+    private void handleAuthResult(Auth.AuthResult result) {
+        if (result.getSuccess()) {
+            // Authentication successful
+            mAuthManager.setAuthenticated(result.getSessionId());
+            onNetworkStatus(NetworkStatus.AUTH_SUCCESS);
+            
+            // Send the initial handshake message
+            sendServer(Opcode.OP_SYN, null);
+            
+            Log.i(TAG, "Authentication successful");
+        } else {
+            // Authentication failed
+            String reason = result.getReason();
+            Log.e(TAG, "Authentication failed");
+            
+            String userMessage = AuthenticationManager.getUserFriendlyMessage(reason);
+            mCallback.onAuthenticationError(userMessage);
+            
+            onNetworkStatus(NetworkStatus.ERROR_AUTH_FAILED);
+            mConnection.disconnect();
         }
     }
 

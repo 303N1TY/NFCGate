@@ -115,11 +115,20 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
             case ERROR_TLS_CERT_UNTRUSTED:
                 mStatusBanner.setError(getString(R.string.network_tls_untrusted));
                 break;
+            case ERROR_AUTH_FAILED:
+                mStatusBanner.setError(getString(R.string.network_auth_failed));
+                break;
             case CONNECTING:
                 mStatusBanner.setError(getString(R.string.network_connecting));
                 break;
             case CONNECTED:
                 mStatusBanner.setWarning(getString(R.string.network_connected_wait));
+                break;
+            case AUTH_IN_PROGRESS:
+                mStatusBanner.setWarning(getString(R.string.network_auth_in_progress));
+                break;
+            case AUTH_SUCCESS:
+                mStatusBanner.setSuccess(getString(R.string.network_auth_success));
                 break;
             case PARTNER_CONNECT:
                 mStatusBanner.setSuccess(getString(R.string.network_connected));

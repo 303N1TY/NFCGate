@@ -41,6 +41,9 @@
     <string name="network_tls_error">Network: TLS error</string>
     <string name="network_tls_unknown">Network: Certificate unknown</string>
     <string name="network_tls_untrusted">Network: Certificate untrusted</string>
+    <string name="network_auth_in_progress">Network: Authenticating…</string>
+    <string name="network_auth_success">Network: Authenticated ✓</string>
+    <string name="network_auth_failed">Network: Authentication failed</string>
 
     <!-- Error messages -->
     <string name="error_NFCCAP">Your device does not support NFC or you turned it off. Please enable NFC to use NFCGate.</string>
@@ -138,6 +141,16 @@
     <string name="settings_session">Session</string>
     <string name="settings_session_summary">Shared Session Number</string>
     <string name="settings_session_dialog">Enter a two-digit session number</string>
+    <string name="settings_authentication">Server Authentication</string>
+    <string name="settings_enable_authentication">Enable Authentication</string>
+    <string name="settings_enable_authentication_summary">Require HMAC authentication when connecting to server</string>
+    <string name="settings_auth_secret">Shared Secret</string>
+    <string name="settings_auth_secret_summary">Secret must match server\'s NFCGATE_SECRET</string>
+    <string name="settings_auth_secret_dialog">Enter the shared secret (must match server)</string>
+    <string name="settings_auth_client_id">Client ID</string>
+    <string name="settings_auth_client_id_summary">Identifier for this device</string>
+    <string name="settings_auth_client_id_dialog">Enter a client identifier for this device</string>
+    <string name="settings_auth_info">⚠️ Always use authentication with TLS/WSS connections only. Never send secrets over plain connections.</string>
     <string name="settings_replay">Replay Settings</string>
     <string name="settings_adv_replay">Advanced Replay</string>
     <string name="settings_adv_replay_summary">Enables replay over network</string>

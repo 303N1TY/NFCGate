@@ -283,6 +283,14 @@ public class NfcManager implements NfcAdapter.ReaderCallback, NetworkManager.Cal
             mMode.onNetworkStatus(status);
     }
 
+    @Override
+    public void onAuthenticationError(final String message) {
+        mActivity.runOnUiThread(() -> {
+            // Show authentication error to user
+            mActivity.showWarning(message);
+        });
+    }
+
     // PRIVATE
 
     @Override

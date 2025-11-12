@@ -11,6 +11,7 @@ import de.tu_darmstadt.seemoo.nfcgate.network.ServerConnection;
 public class ReceiveThread extends BaseThread {
     private static final String TAG = "ReceiveThread";
     public static final int MAX_RECEIVE_BYTES = 100*1024*1024;
+    public static final int AUTH_MESSAGE_TYPE = 255;
 
     // references
     private DataInputStream mReadStream;
@@ -28,7 +29,7 @@ public class ReceiveThread extends BaseThread {
     }
 
     /**
-     * Tries to send one item from the sendQueue.
+     * Tries to receive and process one message from the stream.
      */
     @Override
     void runInternal() throws IOException {
@@ -39,12 +40,18 @@ public class ReceiveThread extends BaseThread {
         if (length > MAX_RECEIVE_BYTES)
             throw new IOException("Invalid protocol length prefix received");
 
+        // read the message type/session byte
+        int messageType = mReadStream.readUnsignedByte();
+        
+        // adjust data length (already read 1 byte for type)
+        int dataLength = length - 1;
+        
         // block and wait for actual data
-        byte[] data = new byte[length];
+        byte[] data = new byte[dataLength];
         mReadStream.readFully(data);
 
-        // deliver data
-        mConnection.onReceive(data);
+        // deliver data with message type
+        mConnection.onReceive(messageType, data);
     }
 
     @Override

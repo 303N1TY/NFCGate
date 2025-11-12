@@ -277,5 +277,17 @@ public class ReplayFragment extends BaseNetworkFragment implements LoggingFragme
                 activity.runOnUiThread(() -> handleStatus(status));
             }
         }
+
+        @Override
+        public void onAuthenticationError(final String message) {
+            final FragmentActivity activity = getActivity();
+            if (activity != null) {
+                activity.runOnUiThread(() -> {
+                    if (getMainActivity() != null) {
+                        getMainActivity().showWarning(message);
+                    }
+                });
+            }
+        }
     }
 }
